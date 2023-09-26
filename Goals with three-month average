@@ -18,7 +18,7 @@ if object_id('tempdb..#Calendar') is not null drop table #Calendar
 
 Select MD1.RowNum, MD1.EndOfMonth, MD1.Day#
 	,(select sum(day#) from #mthdy as MD2
-		where MD2.RowNum between MD1.RowNum-2 and 					MD1.RowNum) as Running3Mths
+		where MD2.RowNum between MD1.RowNum-2 and MD1.RowNum) as Running3Mths
 ,CONVERT(nvarchar(6), EndOfMonth, 112) as "Post Month"
 
 into #Calendar
@@ -47,12 +47,12 @@ drop table #MainTab
 
 select F.DIVISION,MBTB.[Rollup_Value_Description] as Market, f.Fac_Nam as Facility,GL1.Fac_Code,GL1.Fac_Key, GL1.[Post Month],Cal.EndOfMonth, GL1.Goal, GL1.Goal_WO_Adj, GL1.[Net AR], GL1.[Net AR WO ADJ]
 	,(Select sum(Goal) from #GLTab as GL2
-		where GL2.RowNum between GL1.RowNum-2 and 					GL1.RowNum
-		and GL1.Fac_Code = GL2.Fac_Code) as 				GoalRun3Mths
+		where GL2.RowNum between GL1.RowNum-2 and GL1.RowNum
+		and GL1.Fac_Code = GL2.Fac_Code) as GoalRun3Mths
 
 	,(Select sum(Goal_WO_ADJ) from #GLTab as GL2
 		where GL2.RowNum between GL1.RowNum-2 and GL1.RowNum
-		and GL1.Fac_Code = GL2.Fac_Code) as 				GoalRun3Mths_WO_Adj
+		and GL1.Fac_Code = GL2.Fac_Code) as GoalRun3Mths_WO_Adj
 
 ,Cal.Day# as "Days in Month", Cal.Running3Mths as "3MthDaySum"
 
@@ -61,7 +61,7 @@ From #GLTab as GL1
 
 Left JOIN database2.dbo.FAC_MASTER f	ON GL1.Fac_Code = f.Fac_Code and gl1.Fac_Key=f.Fac_Key
 			
-LEFT JOIN   (Select c1.* From [database2].[dbo].[FAC_ROLLUP] c1  JOIN database2.dbo.[ROLLUP_MASTER] c2   on c1.[ROLLUP_KEY] = c2.[ROLLUP_KEY] where c2.Rollup_Level_Code = 'MB'  ) MBTB     on f.Fac_Key = MBTB.Fac_Key
+LEFT JOIN   (Select c1.* From [database2].[dbo].[FAC_ROLLUP] c1  JOIN database2.dbo.[ROLLUP_MASTER] c2   on c1.[ROLLUP_KEY] = c2.[ROLLUP_KEY] where c2.Rollup_Level_Code = 'MB'  ) MBTB on f.Fac_Key = MBTB.Fac_Key
 
 Left JOIN #Calendar Cal on GL1.[Post Month] = Cal.[Post Month]
 ;
