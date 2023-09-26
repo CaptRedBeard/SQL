@@ -1,0 +1,83 @@
+--Creates Tables for Calendar Sum of day-Running 3 months 
+if object_id('tempdb.dbo.#mthdy') is not null
+drop table #mthdy
+
+Select row_Number() Over(order by g1.EndOfMonth asc) as RowNum
+,G1.EndOfMonth, g2.Day#
+
+into #mthdy
+
+From(Select Distinct(EndOfMonthONTH(pfdate)) AS EndOfMonth 
+		from  database.dbo.table1) g1
+
+Left Outer Join database.dbo.Table1 G2 on g1.EndOfMonth = g2.PFDATE
+;
+
+
+if object_id('tempdb..#Calendar') is not null drop table #Calendar
+
+Select MD1.RowNum, MD1.EndOfMonth, MD1.Day#
+	,(select sum(day#) from #mthdy as MD2
+		where MD2.RowNum between MD1.RowNum-2 and 					MD1.RowNum) as Running3Mths
+,CONVERT(nvarchar(6), EndOfMonth, 112) as "Post Month"
+
+into #Calendar
+from #mthdy as MD1
+;
+
+----------------------------------------------------------------
+
+-- Creates table for Three Month Daily Average
+if object_id('tempdb.dbo.#GLTab') is not null  drop table #GLTab
+
+Select ROW_NUMBER() OVER(ORDER BY Fac_Code, GL_Date asc) as RowNum,  GL1.Fac_Code, GL1.Fac_Key, GL1.GL_DATE as "Post Month", adj.[Year/Month], GL1.NET_RECEIVABLES as Goal, 
+		GL1.ACCOUNTS_RECEIVABLE as "Net Acct Rec"
+		,adj.[Net Goal] as Goal_WO_Adj
+		,adj.[Net Accounts Receivable] as "Net AR WO ADJ"
+		
+into #GLTab
+from database2.dbo.gen_led as GL1
+
+Left Join database.dbo.table3 ADJ on gl1.Fac_Code=adj.[Facility code] and gl1.gl_date=adj.[Year/Month]
+;
+
+
+if object_id('tempdb.dbo.#MainTab') is not null
+drop table #MainTab
+
+select F.DIVISION,MBTB.[Rollup_Value_Description] as Market, f.Fac_Nam as Facility,GL1.Fac_Code,GL1.Fac_Key, GL1.[Post Month],Cal.EndOfMonth, GL1.Goal, GL1.Goal_WO_Adj, GL1.[Net AR], GL1.[Net AR WO ADJ]
+	,(Select sum(Goal) from #GLTab as GL2
+		where GL2.RowNum between GL1.RowNum-2 and 					GL1.RowNum
+		and GL1.Fac_Code = GL2.Fac_Code) as 				GoalRun3Mths
+
+	,(Select sum(Goal_WO_ADJ) from #GLTab as GL2
+		where GL2.RowNum between GL1.RowNum-2 and GL1.RowNum
+		and GL1.Fac_Code = GL2.Fac_Code) as 				GoalRun3Mths_WO_Adj
+
+,Cal.Day# as "Days in Month", Cal.Running3Mths as "3MthDaySum"
+
+Into #MainTab		
+From #GLTab as GL1
+
+Left JOIN database2.dbo.FAC_MASTER f	ON GL1.Fac_Code = f.Fac_Code and gl1.Fac_Key=f.Fac_Key
+			
+LEFT JOIN   (Select c1.* From [database2].[dbo].[FAC_ROLLUP] c1  JOIN database2.dbo.[ROLLUP_MASTER] c2   on c1.[ROLLUP_KEY] = c2.[ROLLUP_KEY] where c2.Rollup_Level_Code = 'MB'  ) MBTB     on f.Fac_Key = MBTB.Fac_Key
+
+Left JOIN #Calendar Cal on GL1.[Post Month] = Cal.[Post Month]
+;
+			
+		
+----------------------------------------------------------------
+		--Final Table
+if object_id('database.dbo.FinalTable') is not null drop table database.dbo.FinalTable
+
+Select MT.*
+,Round(("Goalrun3Mths" / "3MthDaysum" ),9) As 
+"Ave-Daily 3 Mo Goal"
+,Round(("GoalRun3Mths_WO_Adj" / "3MthDaysum" ),9) As 
+"Ave-Daily 3 Mo Goal WO Adj"
+Into database.dbo.FinalTable
+From #MainTab MT
+		
+
+		
